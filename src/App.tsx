@@ -4,6 +4,7 @@ import { deviceAvailability, polishStep, polishTitle, prepareDevice } from "./li
 import { ScreenGrabber } from "./lib/capture";
 import { firebase, firebaseConfigured, settings } from "./lib/firebase";
 import { installLocalSpeech, Listener, speechSupport } from "./lib/speech";
+import { loadSample, SAMPLE_TITLE } from "./lib/sample";
 import { shareGuide } from "./lib/share";
 import { buildSteps, toHtml, toMarkdown, type Segment, type Step } from "./lib/steps";
 
@@ -143,6 +144,20 @@ export default function App() {
     }
   };
 
+  const trySample = async () => {
+    setError("");
+    try {
+      const segs = await loadSample();
+      setSegments(segs);
+      setSteps(buildSteps(segs));
+      setTitle(SAMPLE_TITLE);
+      setLink("");
+      setPhase("editing");
+    } catch (e) {
+      setError(`Couldn't load the sample: ${(e as Error).message}`);
+    }
+  };
+
   const polishAll = async () => {
     if (!firebaseConfigured) {
       setError("AI rewriting needs a Firebase project. See the README.");
@@ -203,140 +218,145 @@ export default function App() {
   const onDevice = steps.filter((s) => s.source === "on_device").length;
   const inCloud = steps.filter((s) => s.source === "in_cloud").length;
 
+  const nanoReady = nano.status === "available" || nano.status === "readily";
+  const canWrite = nanoReady || allowCloud;
+  const reset = () => { setPhase("idle"); setSegments([]); setSteps([]); setLink(""); };
+
   return (
     <div className="page">
       <header className="top">
-        <div className="brand">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M4 12h16M4 18h7" /></svg>
-          Talkthrough
-        </div>
-        <label className="cloud">
+        <button className="wordmark" onClick={phase === "editing" ? reset : undefined} aria-label="Talkthrough home">
+          <span className="rec" aria-hidden="true" />Talkthrough
+        </button>
+        <label className="toggle">
           <input type="checkbox" checked={allowCloud} onChange={(e) => toggleCloud(e.target.checked)} />
-          <span>Allow cloud when this computer can't</span>
+          <span className="track" aria-hidden="true" />
+          <span>Allow cloud</span>
         </label>
       </header>
 
-      <section className="status" aria-label="Where your data is processed">
-        <Chip label="Speech" state={speech} onFix={speech === "downloadable" ? installSpeech : undefined} fixLabel="Install on-device speech" />
-        <Chip
+      <p className="where" aria-label="Where your data is processed">
+        <Status label="Speech" state={speech} onFix={speech === "downloadable" ? installSpeech : undefined} fixLabel="install" />
+        <Status
           label="Gemini Nano"
           state={nano.status}
           progress={nano.progress}
           onFix={nano.status === "downloadable" || nano.status === "unknown" ? prepareNano : undefined}
-          fixLabel="Prepare Gemini Nano"
+          fixLabel="prepare"
         />
-        {!firebaseConfigured && <span className="chip warn">Firebase not configured</span>}
-      </section>
-      {(nano.status === "unavailable" || nano.status === "unsupported") && (
-        <p className="hint">
-          Gemini Nano needs Chrome on a desktop computer (version 139 or later) with about 22 GB of free disk, and{" "}
-          <code>chrome://flags/#prompt-api-for-gemini-nano-multimodal-input</code> enabled.{" "}
-          {allowCloud ? "Until then, steps are written in the cloud." : "Turn on “Allow cloud” to write steps in the cloud meanwhile."}
-        </p>
-      )}
+        <span className="cloud-state">{allowCloud ? "Cloud allowed as a fallback" : "Cloud off: nothing leaves this computer"}</span>
+      </p>
 
       {error && <p className="error" role="alert">{error}</p>}
 
       {phase === "idle" && (
-        <section className="hero">
-          <h1>Talk through a task.<br />Get a written guide.</h1>
+        <main className="hero">
+          <h1>Say it once.<br /><em>It writes the guide.</em></h1>
           <p className="lead">
-            Share your screen and say what you're doing. Talkthrough writes each step as a short instruction with a
-            screenshot, using Gemini Nano on this computer. Nothing leaves it unless you allow the cloud.
+            Share your screen and talk through a task. Talkthrough turns what you say into short written steps, each
+            with a screenshot, using Gemini Nano on your own computer.
           </p>
-          <button className="primary" onClick={startRecording}>Start recording</button>
-        </section>
+          <div className="cta">
+            <button className="primary" onClick={startRecording}><span className="rec" aria-hidden="true" />Start recording</button>
+            <button className="quiet" onClick={trySample}>Try a sample recording</button>
+          </div>
+          <ol className="how">
+            <li><b>Talk</b>while you share your screen. A screenshot is taken each time you finish a sentence.</li>
+            <li><b>Write</b>with Gemini Nano in Chrome. If it can't run here and you allow it, Gemini in the cloud takes over.</li>
+            <li><b>Check</b>every rewrite against what you said. Anything you didn't say is thrown out, not shown.</li>
+          </ol>
+          {!nanoReady && nano.status !== "checking" && (
+            <p className="hint">
+              Gemini Nano needs desktop Chrome 139+, about 22 GB of free disk, and{" "}
+              <code>chrome://flags/#prompt-api-for-gemini-nano-multimodal-input</code> enabled.
+            </p>
+          )}
+        </main>
       )}
 
       {phase === "recording" && (
-        <section className="recording">
-          <div className="rec-head">
-            <span className="dot" aria-hidden="true" /> Recording · {segments.length} {segments.length === 1 ? "line" : "lines"}
-            <button className="primary" onClick={stopRecording}>Stop and build the guide</button>
-          </div>
+        <main className="recording">
+          <p className="rec-line"><span className="rec live" aria-hidden="true" />Recording · {segments.length} {segments.length === 1 ? "line" : "lines"}</p>
           <p className="interim" aria-live="polite">{interim || "Listening…"}</p>
-          <ol className="lines">
-            {segments.slice(-6).map((s) => <li key={s.at}>{s.text}</li>)}
-          </ol>
-        </section>
+          <ol className="lines">{segments.slice(-5).map((s) => <li key={s.at}>{s.text}</li>)}</ol>
+          <button className="primary" onClick={stopRecording}>Stop and build the guide</button>
+        </main>
       )}
 
       {phase === "editing" && (
-        <section className="guide">
-          <div className="guide-head">
-            <input className="title" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Guide title" />
-            <div className="actions">
-              <button className="primary" onClick={polishAll} disabled={busy || !steps.length}>
-                {busy ? "Writing…" : "Write the steps with AI"}
-              </button>
-              <button onClick={() => download(`${slug(title)}.md`, toMarkdown(title, steps), "text/markdown")} disabled={!steps.length}>Markdown</button>
-              <button onClick={() => download(`${slug(title)}.html`, toHtml(title, steps), "text/html")} disabled={!steps.length}>HTML</button>
-              <button onClick={share} disabled={!steps.length || sharing || !firebaseConfigured}>{sharing ? "Sharing…" : "Share link"}</button>
-              <button onClick={() => { setPhase("idle"); setSegments([]); setSteps([]); setLink(""); }}>New</button>
-            </div>
+        <main className="guide">
+          <textarea className="title" rows={1} value={title} onChange={(e) => setTitle(e.target.value.replace(/\n/g, " "))} aria-label="Guide title" />
+          <div className="toolbar">
+            <button className="primary" onClick={polishAll} disabled={busy || !steps.length || !canWrite}>
+              {busy ? "Writing…" : "Write the steps"}
+            </button>
+            <span className="sep" />
+            <button className="quiet" onClick={() => download(`${slug(title)}.md`, toMarkdown(title, steps), "text/markdown")} disabled={!steps.length}>Markdown</button>
+            <button className="quiet" onClick={() => download(`${slug(title)}.html`, toHtml(title, steps), "text/html")} disabled={!steps.length}>HTML</button>
+            <button className="quiet" onClick={share} disabled={!steps.length || sharing || !firebaseConfigured}>{sharing ? "Sharing…" : "Share link"}</button>
+            <button className="quiet" onClick={reset}>New</button>
           </div>
+          {!canWrite && <p className="hint">Gemini Nano isn't ready in this browser. Turn on “Allow cloud” to write the steps with Gemini in the cloud.</p>}
           {link && (
             <p className="link-out">
-              Anyone with this link can read the guide: <a href={link} target="_blank" rel="noreferrer">{link}</a>{" "}
-              <button className="link" onClick={() => navigator.clipboard.writeText(link)}>Copy</button>
+              Read-only link: <a href={link} target="_blank" rel="noreferrer">{link}</a>{" "}
+              <button className="text" onClick={() => navigator.clipboard.writeText(link)}>copy</button>
             </p>
           )}
           {(onDevice > 0 || inCloud > 0) && (
-            <p className="summary">
-              {onDevice} {onDevice === 1 ? "step" : "steps"} written on this computer · {inCloud} in the cloud
-            </p>
+            <p className="tally"><span className="dot device" />{onDevice} written on this computer <span className="dot cloud" />{inCloud} in the cloud</p>
           )}
-          {!steps.length && <p className="empty">Nothing was heard. Check the microphone and record again.</p>}
+          {!steps.length && <p className="hint">Nothing was heard. Check the microphone and record again.</p>}
           <ol className="steps">
             {steps.map((s, i) => (
               <li key={s.id} className={`step ${s.status}`}>
-                <div className="step-text">
-                  <span className="num">{i + 1}</span>
+                <span className="num">{String(i + 1).padStart(2, "0")}</span>
+                <div className="body">
                   <textarea value={s.text} rows={2} onChange={(e) => edit(s.id, e.target.value)} aria-label={`Step ${i + 1}`} />
-                  <div className="meta">
-                    {s.source && <span className={`badge ${s.source}`}>{s.source === "on_device" ? "On this computer" : "Cloud"}</span>}
-                    {s.status === "polishing" && <span className="badge">Writing…</span>}
-                    {s.status === "edited" && <span className="badge">Edited</span>}
-                    <span className="said">You said: “{s.said}”</span>
-                    {s.note && <span className="note">{s.note}</span>}
-                  </div>
-                  <div className="step-tools">
-                    <button onClick={() => move(s.id, -1)} disabled={i === 0} aria-label="Move up">↑</button>
-                    <button onClick={() => move(s.id, 1)} disabled={i === steps.length - 1} aria-label="Move down">↓</button>
-                    <button onClick={() => remove(s.id)} aria-label="Delete step">Delete</button>
-                  </div>
+                  <p className="meta">
+                    {s.source && <span className={`tag ${s.source}`}>{s.source === "on_device" ? "on this computer" : "cloud"}</span>}
+                    {s.status === "polishing" && <span className="tag">writing…</span>}
+                    {s.status === "edited" && <span className="tag">edited</span>}
+                    <span className="said">“{s.said}”</span>
+                  </p>
+                  {s.note && <p className="note">{s.note}</p>}
+                  {s.shot && <img src={s.shot} alt={`Screen at step ${i + 1}`} />}
+                  <p className="tools">
+                    <button className="text" onClick={() => move(s.id, -1)} disabled={i === 0}>up</button>
+                    <button className="text" onClick={() => move(s.id, 1)} disabled={i === steps.length - 1}>down</button>
+                    <button className="text" onClick={() => remove(s.id)}>delete</button>
+                  </p>
                 </div>
-                {s.shot && <img src={s.shot} alt={`Screen at step ${i + 1}`} />}
               </li>
             ))}
           </ol>
-        </section>
+        </main>
       )}
-      <footer className="foot">Speech, screenshots and rewriting stay in this browser unless “Allow cloud” is on.</footer>
+      <footer className="foot">Built on Firebase AI Logic hybrid inference · Gemini Nano first, cloud only with your say-so.</footer>
     </div>
   );
 }
 
 const LABEL: Record<string, string> = {
-  checking: "checking…",
+  checking: "checking",
   available: "on this computer",
   readily: "on this computer",
   downloadable: "not installed",
-  downloading: "downloading…",
+  downloading: "downloading",
   "after-download": "not installed",
-  unavailable: "not available here",
-  unsupported: "not supported in this browser",
+  unavailable: "unavailable here",
+  unsupported: "unsupported here",
   "cloud-only": "cloud only",
   unknown: "not checked",
 };
 
-function Chip({ label, state, progress, onFix, fixLabel }: { label: string; state: string; progress?: number; onFix?: () => void; fixLabel: string }) {
+function Status({ label, state, progress, onFix, fixLabel }: { label: string; state: string; progress?: number; onFix?: () => void; fixLabel: string }) {
   const good = state === "available" || state === "readily";
   const text = state === "downloading" && progress ? `downloading ${Math.round(progress * 100)}%` : LABEL[state] ?? state;
   return (
-    <span className={`chip ${good ? "good" : ""}`}>
-      <b>{label}</b> {text}
-      {onFix && <button className="link" onClick={onFix}>{fixLabel}</button>}
+    <span className={`status ${good ? "good" : ""}`}>
+      <span className="dot" aria-hidden="true" />{label}: {text}
+      {onFix && <> · <button className="text" onClick={onFix}>{fixLabel}</button></>}
     </span>
   );
 }

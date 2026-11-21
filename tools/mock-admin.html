@@ -1,0 +1,55 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Fernhill Admin</title><style>
+*{box-sizing:border-box}body{margin:0;font:15px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;color:#1d2433;background:#f4f6fa;width:1280px;height:800px;overflow:hidden}
+.app{display:grid;grid-template-columns:230px 1fr;height:100%}
+nav{background:#14213d;color:#c9d3ea;padding:22px 16px}
+nav .logo{color:#fff;font-weight:700;font-size:18px;margin:0 8px 26px;display:flex;gap:10px;align-items:center}
+nav .logo i{width:26px;height:26px;border-radius:7px;background:#4c7cf3;display:inline-block}
+nav a{display:block;padding:10px 12px;border-radius:8px;color:inherit;text-decoration:none;margin-bottom:4px}
+nav a.on{background:#253556;color:#fff;font-weight:600}
+main{padding:28px 36px;position:relative}
+h1{font-size:24px;margin:0 0 20px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{background:#fff;border:1px solid #e2e6ef;border-radius:12px;padding:18px}
+.card b{font-size:28px;display:block;margin-top:6px}
+.muted{color:#6b7385}
+.search{display:flex;gap:10px;margin-bottom:16px}
+.search input{flex:1;font:inherit;padding:11px 14px;border:1px solid #cdd3e0;border-radius:9px;background:#fff}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e6ef;border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:13px 16px;border-bottom:1px solid #eef1f6}th{font-size:13px;color:#6b7385;font-weight:600;background:#fafbfd}
+tr.hi td{background:#eef3ff}
+.btn{display:inline-block;padding:10px 16px;border-radius:9px;border:1px solid #cdd3e0;background:#fff;font-weight:600}
+.btn.primary{background:#4c7cf3;color:#fff;border-color:#4c7cf3}.btn.danger{color:#b4232c;border-color:#f0c4c7}
+.profile{display:grid;grid-template-columns:1fr 320px;gap:20px}
+.avatar{width:64px;height:64px;border-radius:50%;background:#d9e3fb;display:grid;place-items:center;font-weight:700;color:#3557b8;font-size:22px}
+.row{display:flex;gap:16px;align-items:center}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:10px 16px;margin-top:18px}
+.overlay{position:absolute;inset:0;background:rgba(20,33,61,.35);display:grid;place-items:center}
+.dialog{background:#fff;border-radius:14px;width:460px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.dialog h2{margin:0 0 8px;font-size:20px}.dialog .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}
+.toast{position:absolute;right:28px;bottom:28px;background:#14213d;color:#fff;padding:14px 18px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.cursor{position:absolute;width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:22px solid #111;transform:rotate(-28deg)}
+</style></head><body><div class="app">
+<nav><div class="logo"><i></i>Fernhill Admin</div>
+<a id="n-home" href="#">Dashboard</a><a id="n-users" href="#">Users</a><a href="#">Groups</a><a href="#">Billing</a><a href="#">Settings</a></nav>
+<main id="main"></main></div>
+<script>
+const s = new URLSearchParams(location.search).get("s") || "home";
+const M = document.getElementById("main");
+const cursor = (x, y) => `<div class="cursor" style="left:${x}px;top:${y}px"></div>`;
+const users = [["Aarav Mehta","aarav@fernhill.example","Active"],["Maria Okafor","maria@fernhill.example","Active"],["Chen Wei","chen@fernhill.example","Invited"],["Sofia Rossi","sofia@fernhill.example","Active"],["Liam Novak","liam@fernhill.example","Suspended"]];
+const table = (rows, hi) => `<table><tr><th>Name</th><th>Email</th><th>Status</th></tr>${rows.map(r=>`<tr class="${r[0]===hi?'hi':''}"><td>${r[0]}</td><td class="muted">${r[1]}</td><td>${r[2]}</td></tr>`).join("")}</table>`;
+const profile = `<div class="row"><div class="avatar">MO</div><div><h1 style="margin:0">Maria Okafor</h1><div class="muted">maria@fernhill.example · Finance</div></div></div>
+<div class="profile" style="margin-top:22px"><div class="card"><b style="font-size:17px">Account</b><div class="kv"><span class="muted">Status</span><span>Active</span><span class="muted">Last sign-in</span><span>3 days ago</span><span class="muted">Two-step</span><span>On</span></div></div>
+<div class="card"><b style="font-size:17px">Security</b><p class="muted">Password last changed 94 days ago.</p><span class="btn danger" id="reset">Reset password</span></div></div>`;
+if (s === "home") { document.getElementById("n-home").className="on";
+  M.innerHTML = `<h1>Dashboard</h1><div class="cards"><div class="card"><span class="muted">Active users</span><b>248</b></div><div class="card"><span class="muted">Pending invites</span><b>12</b></div><div class="card"><span class="muted">Open tickets</span><b>7</b></div></div>` + cursor(-120, 66); }
+if (s === "users") { document.getElementById("n-users").className="on";
+  M.innerHTML = `<h1>Users</h1><div class="search"><input placeholder="Search by name or email"><span class="btn primary">Invite user</span></div>` + table(users) + cursor(-130, 110); }
+if (s === "search") { document.getElementById("n-users").className="on";
+  M.innerHTML = `<h1>Users</h1><div class="search"><input value="maria"><span class="btn primary">Invite user</span></div>` + table(users.filter(u=>/maria/i.test(u[0])), "Maria Okafor") + cursor(110, 150); }
+if (s === "profile") { document.getElementById("n-users").className="on"; M.innerHTML = profile + cursor(800, 250); }
+if (s === "dialog") { document.getElementById("n-users").className="on";
+  M.innerHTML = profile + `<div class="overlay"><div class="dialog"><h2>Reset Maria's password?</h2><p class="muted">We'll email Maria a link to choose a new password. Her current sessions stay signed in until she does.</p><div class="actions"><span class="btn">Cancel</span><span class="btn primary">Send reset link</span></div></div></div>` + cursor(700, 470); }
+if (s === "done") { document.getElementById("n-users").className="on";
+  M.innerHTML = profile + `<div class="toast">Reset link sent to maria@fernhill.example</div>`; }
+</script></body></html>

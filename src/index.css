@@ -1,14 +1,41 @@
-:root{
-  --bg:#f7f7f9;--surface:#fff;--soft:#f0f0f4;--text:#16171c;--muted:#5f6270;--line:#e2e2e8;--accent:#3b5bdb;
-  --good:#1f7a4a;--good-bg:#e7f6ee;--good-line:#bfe6d0;--warn:#9a4a07;--warn-bg:#fdf3e5;--warn-line:#f3d7ae;
-  --cloud:#5a3fb8;--cloud-bg:#efeafc;
-  color-scheme:light dark;
+/* Paper and ink: Talkthrough turns talk into a printed-style manual, so the page looks like one.
+   One accent only: the red of a recording light. */
+:root {
+  --paper: #f6f3ec;
+  --sheet: #fbfaf6;
+  --ink: #171614;
+  --ink-2: #4a4741;
+  --ink-3: #8a857b;
+  --rule: #e2ddd1;
+  --rec: #d93a2b;
+  --device: #2f7d4f;
+  --cloud: #6a55b5;
+  --warn: #8a4b0f;
+  --serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+  --sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: light;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#111216;--surface:#1a1b21;--soft:#23252d;--text:#ececf1;--muted:#a3a6b3;--line:#2e3039;--accent:#6f8cff;
-  --good:#5fd39a;--good-bg:#173226;--good-line:#25503b;--warn:#f1b467;--warn-bg:#33240f;--warn-line:#5a3d16;
-  --cloud:#b9a5ff;--cloud-bg:#2a2340;
-}}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text)}
-body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #151412;
+    --sheet: #1c1b18;
+    --ink: #efebe2;
+    --ink-2: #c2bdb1;
+    --ink-3: #8a857b;
+    --rule: #2f2d28;
+    --rec: #ff5a47;
+    --device: #6fcf97;
+    --cloud: #b4a4ff;
+    --warn: #f2b66d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #151412; --sheet: #1c1b18; --ink: #efebe2; --ink-2: #c2bdb1; --ink-3: #8a857b; --rule: #2f2d28;
+  --rec: #ff5a47; --device: #6fcf97; --cloud: #b4a4ff; --warn: #f2b66d; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); }
+body { font: 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
+::selection { background: color-mix(in srgb, var(--rec) 22%, transparent); }

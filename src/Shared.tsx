@@ -17,13 +17,10 @@ export default function Shared({ id }: { id: string }) {
   return (
     <div className="page shared">
       <header className="top">
-        <a className="brand" href="/">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M4 12h16M4 18h7" /></svg>
-          Talkthrough
-        </a>
+        <a className="wordmark" href="/"><span className="rec" aria-hidden="true" />Talkthrough</a>
       </header>
       {error && <p className="error" role="alert">Couldn't open this guide: {error}</p>}
-      {guide === undefined && !error && <p className="summary">Loading…</p>}
+      {guide === undefined && !error && <p className="hint">Loading…</p>}
       {guide === null && <p className="error">This guide doesn't exist, or the link is wrong.</p>}
       {guide && (
         <article>
@@ -31,11 +28,11 @@ export default function Shared({ id }: { id: string }) {
           <ol className="steps">
             {guide.steps.map((s, i) => (
               <li key={i} className="step">
-                <div className="step-text">
-                  <span className="num">{i + 1}</span>
+                <span className="num">{String(i + 1).padStart(2, "0")}</span>
+                <div className="body">
                   <p className="shared-text">{s.text}</p>
+                  {s.shot && <img src={s.shot} alt={`Step ${i + 1}`} />}
                 </div>
-                {s.shot && <img src={s.shot} alt={`Step ${i + 1}`} />}
               </li>
             ))}
           </ol>
