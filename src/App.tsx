@@ -4,6 +4,7 @@ import { deviceAvailability, polishStep, polishTitle, prepareDevice } from "./li
 import { ScreenGrabber } from "./lib/capture";
 import { firebase, firebaseConfigured, settings } from "./lib/firebase";
 import { installLocalSpeech, Listener, speechSupport } from "./lib/speech";
+import { shareGuide } from "./lib/share";
 import { buildSteps, toHtml, toMarkdown, type Segment, type Step } from "./lib/steps";
 
 type Phase = "idle" | "recording" | "editing";
@@ -44,6 +45,8 @@ export default function App() {
   const [title, setTitle] = useState("How to …");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [link, setLink] = useState("");
+  const [sharing, setSharing] = useState(false);
   const listener = useRef<Listener | null>(null);
   const grabber = useRef<ScreenGrabber | null>(null);
 
@@ -172,6 +175,18 @@ export default function App() {
     setBusy(false);
   };
 
+  const share = async () => {
+    if (!confirm("Upload this guide's title, steps and screenshots so anyone with the link can read it?")) return;
+    setSharing(true);
+    setError("");
+    try {
+      setLink(await shareGuide(title, steps));
+    } catch (e) {
+      setError(`Couldn't share: ${(e as Error).message}`);
+    }
+    setSharing(false);
+  };
+
   const edit = (id: string, text: string) =>
     setSteps((all) => all.map((x) => (x.id === id ? { ...x, text, status: "edited", note: undefined } : x)));
   const remove = (id: string) => setSteps((all) => all.filter((x) => x.id !== id));
@@ -256,9 +271,16 @@ export default function App() {
               </button>
               <button onClick={() => download(`${slug(title)}.md`, toMarkdown(title, steps), "text/markdown")} disabled={!steps.length}>Markdown</button>
               <button onClick={() => download(`${slug(title)}.html`, toHtml(title, steps), "text/html")} disabled={!steps.length}>HTML</button>
-              <button onClick={() => { setPhase("idle"); setSegments([]); setSteps([]); }}>New</button>
+              <button onClick={share} disabled={!steps.length || sharing || !firebaseConfigured}>{sharing ? "Sharing…" : "Share link"}</button>
+              <button onClick={() => { setPhase("idle"); setSegments([]); setSteps([]); setLink(""); }}>New</button>
             </div>
           </div>
+          {link && (
+            <p className="link-out">
+              Anyone with this link can read the guide: <a href={link} target="_blank" rel="noreferrer">{link}</a>{" "}
+              <button className="link" onClick={() => navigator.clipboard.writeText(link)}>Copy</button>
+            </p>
+          )}
           {(onDevice > 0 || inCloud > 0) && (
             <p className="summary">
               {onDevice} {onDevice === 1 ? "step" : "steps"} written on this computer · {inCloud} in the cloud

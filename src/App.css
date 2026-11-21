@@ -52,3 +52,7 @@ button.link{border:0;background:none;padding:0;color:var(--accent);font-size:13.
 @media (max-width:760px){.step{grid-template-columns:1fr}.page{padding:20px 16px 48px}}
 .hint{font-size:13.5px;color:var(--muted);margin:6px 0 0;max-width:760px;line-height:1.5}
 .hint code{font-size:12.5px;background:var(--soft);padding:1px 5px;border-radius:5px}
+.link-out{font-size:14px;margin:12px 0 0;word-break:break-all}
+.shared-title{font-size:clamp(28px,5vw,40px);letter-spacing:-.02em;margin:36px 0 8px}
+.shared-text{margin:4px 0 0;font-size:17px;font-weight:550;line-height:1.45}
+a.brand{color:inherit;text-decoration:none}
