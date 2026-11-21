@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from "firebase/app";
-import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
+import { CustomProvider, initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import { fetchAndActivate, getRemoteConfig, getValue, type RemoteConfig } from "firebase/remote-config";
 
 /** The web config is public by design (App Check, not secrecy, protects the backend). It comes from .env.local. */
@@ -29,11 +29,17 @@ export function firebase(): FirebaseApp {
   if (!firebaseConfigured) throw new Error("Firebase isn't configured. Copy .env.example to .env.local and fill it in.");
   if (app) return app;
   app = initializeApp(config);
-  // Local development uses App Check's debug provider; the token it prints must be registered in the console.
+  // Local development uses App Check's debug provider: the debug token (registered in the console) is exchanged
+  // instead of a reCAPTCHA attestation, so the provider below is never asked for a token. Without a site key yet,
+  // a stand-in provider avoids loading the reCAPTCHA widget with no key.
   if (import.meta.env.DEV) (self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN: boolean | string }).FIREBASE_APPCHECK_DEBUG_TOKEN =
     import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
-  if (siteKey || import.meta.env.DEV)
-    initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(siteKey ?? "debug"), isTokenAutoRefreshEnabled: true });
+  const provider = siteKey
+    ? new ReCaptchaEnterpriseProvider(siteKey)
+    : import.meta.env.DEV
+      ? new CustomProvider({ getToken: () => Promise.reject(new Error("no Fraud Defense site key configured")) })
+      : undefined;
+  if (provider) initializeAppCheck(app, { provider, isTokenAutoRefreshEnabled: true });
   return app;
 }
 

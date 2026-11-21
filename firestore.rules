@@ -1,0 +1,18 @@
+rules_version = '2';
+// Shared guides are write-once and public to read by link. Only a signed-in (anonymous) user can create one,
+// it must be theirs, and it must stay small; nobody can change or list them.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /guides/{id} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.keys().hasOnly(['owner', 'title', 'steps', 'created'])
+        && request.resource.data.title is string && request.resource.data.title.size() <= 120
+        && request.resource.data.steps is list && request.resource.data.steps.size() <= 40
+        && request.resource.data.created == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

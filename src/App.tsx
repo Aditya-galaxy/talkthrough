@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { deviceAvailability, polishStep, polishTitle, prepareDevice } from "./lib/ai";
 import { ScreenGrabber } from "./lib/capture";
-import { firebaseConfigured } from "./lib/firebase";
+import { firebase, firebaseConfigured, settings } from "./lib/firebase";
 import { installLocalSpeech, Listener, speechSupport } from "./lib/speech";
 import { buildSteps, toHtml, toMarkdown, type Segment, type Step } from "./lib/steps";
 
@@ -48,6 +48,15 @@ export default function App() {
   const grabber = useRef<ScreenGrabber | null>(null);
 
   useEffect(() => {
+    // Start App Check (and Remote Config) at load, so the first AI call doesn't wait on attestation.
+    if (firebaseConfigured) {
+      try {
+        firebase();
+        settings();
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    }
     speechSupport().then((s) => setSpeech(s.local === "unsupported" ? (s.cloud ? "cloud-only" : "unsupported") : s.local));
     deviceAvailability().then((a) => setNano({ status: a, progress: 0 }));
   }, []);
