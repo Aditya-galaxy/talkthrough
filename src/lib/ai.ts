@@ -1,4 +1,4 @@
-import { getAI, getGenerativeModel, GoogleAIBackend, InferenceMode, type GenerativeModel, type Part } from "firebase/ai";
+import { AgentPlatformBackend, getAI, getGenerativeModel, GoogleAIBackend, InferenceMode, type GenerativeModel, type Part } from "firebase/ai";
 import { shrink } from "./capture";
 import { firebase, settings } from "./firebase";
 import { checkRewrite, guardMessage } from "./guard";
@@ -43,7 +43,10 @@ async function models(allowCloud: boolean): Promise<Models> {
   const key = `${allowCloud}:${s.cloud_model}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const ai = getAI(firebase(), { backend: new GoogleAIBackend() });
+  // The cloud fallback bills through Google Cloud (Agent Platform Gemini API) by default; set VITE_AI_BACKEND=google
+  // to use the Gemini Developer API instead (free tier only while the project has no billing account).
+  const backend = import.meta.env.VITE_AI_BACKEND === "google" ? new GoogleAIBackend() : new AgentPlatformBackend("global");
+  const ai = getAI(firebase(), { backend });
   const mode = allowCloud ? InferenceMode.PREFER_ON_DEVICE : InferenceMode.ONLY_ON_DEVICE;
   const make = (system: string, schema: Record<string, unknown>, maxOut: number, withImage: boolean) =>
     getGenerativeModel(ai, {
